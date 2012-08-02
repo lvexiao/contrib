@@ -19,14 +19,25 @@
 ##
 #
 
+#update: to monitor multi redis instances on single munin node
+# $ cd /usr/share/munin/plugins && wget script_url
+# $ ln -s /usr/share/munin/plugins/redis_ /etc/munin/plugins/redis_HOST_PORT__CATEGORY
+# HOST: 127.0.0.1
+# PORT: 6379
+# CATEGORY: redis_master, redis_slave etc.
+
 use strict;
 use Redis;
 use Time::HiRes qw( gettimeofday tv_interval );
 
-my $HOST = exists $ENV{'host'} ? $ENV{'host'} : "127.0.0.1";
-my $PORT = exists $ENV{'port'} ? $ENV{'port'} : 6379;
+my $str = $0;
+$str =~ m/redis-speed_(\d+\.\d+\.\d.+\d+)_(\d+)__(\D+)/;
 
-my $server = "$HOST:$PORT";
+my $HOST = exists $ENV{'host'} ? $ENV{'host'} : $1;
+my $PORT = exists $ENV{'port'} ? $ENV{'port'} : $2;
+my $category = $3 ? $3 : "redis";
+
+my $server = $HOST.":".$PORT;
 my $r = Redis->new( server => sprintf("%s:%d", $HOST, $PORT) );
 
 my $config = ( defined $ARGV[0] and $ARGV[0] eq "config" );
@@ -49,7 +60,7 @@ if ( $config ) {
     print "ping.label PING time\n";
     print "get.label GET time\n";
     print "set.label SET time\n";
-    print "graph_category redis\n";
+    print "graph_category ".$category."\n";
     exit 0;
 }
 

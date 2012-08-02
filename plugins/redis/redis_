@@ -33,12 +33,26 @@
 #%# family=auto
 #%# capabilities=autoconf suggest
 
+#update: to monitor multi redis instances on single munin node
+# $ cd /usr/share/munin/plugins && wget script_url
+# $ ln -s /usr/share/munin/plugins/redis_ /etc/munin/plugins/redis_HOST_PORT_TYPE__CATEGORY
+# HOST: 127.0.0.1
+# PORT: 6379
+# TYPE:  redis_connected_clients, redis_per_sec ,redis_used_memory etc
+# CATEGORY: redis_master, redis_slave etc.
+
 use strict;
 use IO::Socket::INET;
 use Switch;
 
-my $HOST = exists $ENV{'host'} ? $ENV{'host'} : "127.0.0.1";
-my $PORT = exists $ENV{'port'} ? $ENV{'port'} : 6379;
+my $str = $0;
+$str =~ m/redis_(\d+\.\d+\.\d.+\d+)_(\d+)_(\D+)__(\D+)/;
+
+my $HOST = exists $ENV{'host'} ? $ENV{'host'} : $1;
+my $PORT = exists $ENV{'port'} ? $ENV{'port'} : $2;
+my $type = $3;
+my $category = $4 ? $4 : "redis";
+
 my $PASSWORD = exists $ENV{'password'} ? $ENV{'password'} : undef;
 
 my $sock = &get_conn();
@@ -80,14 +94,14 @@ foreach (split(/\r\n/, $rep)) {
 }
 close ($sock);
 
-$0 =~ s/(.+)redis_//g;
+# $0 =~ s/(.+)redis_//g;
 
-switch ($0) {
+switch ($type) {
     case "connected_clients" {
         if ( $config ) {
             print "graph_title Connected clients\n";
             print "graph_vlabel Connected clients\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -l 0\n";
             print "connected_clients.label connected clients\n";
             exit 0;
@@ -101,7 +115,7 @@ switch ($0) {
         if ( $config ) {
             print "graph_title Keys Per Second\n";
             print "graph_vlabel per \${graph_period}\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -l 0\n";
             print "hits.label hits\n";
             print "hits.type COUNTER\n";
@@ -124,7 +138,7 @@ switch ($0) {
         if ( $config ) {
             print "graph_title Key Hit vs Miss Ratio\n";
             print "graph_vlabel per \${graph_period}\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -u 100 -l 0 -r --base 1000\n";
             print "hitratio.label hit ratio\n";
             print "hitratio.type GAUGE\n";
@@ -145,7 +159,7 @@ switch ($0) {
         if ( $config ) {
             print "graph_title Per second\n";
             print "graph_vlabel per \${graph_period}\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -l 0\n";
             print "requests.label requests\n";
             print "requests.type COUNTER\n";
@@ -163,7 +177,7 @@ switch ($0) {
         if ( $config ) {
             print "graph_title Used memory\n";
             print "graph_vlabel Used memory\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -l 0\n";
             print "used_memory.label used memory\n";
             print "used_memory.draw AREA\n";
@@ -184,7 +198,7 @@ switch ($0) {
         if ( $config ) {
             print "graph_title Used keys\n";
             print "graph_vlabel Used keys\n";
-            print "graph_category redis\n";
+            print "graph_category ".$category."\n";
             print "graph_args -l 0\n";
 
             foreach my $db (keys %{$dbs}) {
